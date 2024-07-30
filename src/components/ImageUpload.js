@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Button, CircularProgress } from '@mui/material';
-import { storage } from '../services/firebase';
+import { Button, CircularProgress, Typography } from '@mui/material';
+import { storage, functions } from '../services/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { processImage } from '../services/claude_service';
+import { httpsCallable } from 'firebase/functions';
 
 function ImageUpload() {
   const [image, setImage] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
 
   const handleImageChange = (e) => {
     if (e.target.files[0]) {
@@ -17,20 +19,28 @@ function ImageUpload() {
   const handleUpload = async () => {
     if (image) {
       setUploading(true);
+      setError(null);
+      setResult(null);
+      console.log('Starting upload process');
       const storageRef = ref(storage, `statements/${image.name}`);
       try {
+        console.log('Uploading image to Firebase Storage');
         await uploadBytes(storageRef, image);
+        console.log('Image uploaded successfully');
         const downloadURL = await getDownloadURL(storageRef);
-        
-        // Process image with Claude 3.5 Sonnet
-        const result = await processImage(downloadURL);
-        
-        console.log('OCR Result:', result);
-        
+        console.log('Download URL obtained:', downloadURL);
+
+        console.log('Calling processImage Cloud Function');
+        const processImage = httpsCallable(functions, 'processImage');
+        const response = await processImage({ imageUrl: downloadURL });
+        console.log('Cloud Function response:', response);
+
+        setResult(response.data);
         setUploading(false);
         setImage(null);
       } catch (error) {
-        console.error('Error uploading image:', error);
+        console.error('Error uploading or processing image:', error);
+        setError(error.message);
         setUploading(false);
       }
     }
@@ -59,6 +69,8 @@ function ImageUpload() {
       >
         {uploading ? <CircularProgress size={24} /> : 'Upload'}
       </Button>
+      {error && <Typography color="error">{error}</Typography>}
+      {result && <Typography>{JSON.stringify(result)}</Typography>}
     </div>
   );
 }

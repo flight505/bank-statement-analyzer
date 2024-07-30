@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { db } from '../services/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { TextField, Paper, Typography } from '@mui/material';
@@ -16,11 +16,7 @@ function Summary() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  useEffect(() => {
-    fetchSummary();
-  }, [startDate, endDate]);
-
-  const fetchSummary = async () => {
+  const fetchSummary = useCallback(async () => {
     setLoading(true);
     let q = query(collection(db, 'deposits'), where('userId', '==', 'current-user-id'));
 
@@ -59,7 +55,11 @@ function Summary() {
 
     setChartData(chartData.sort((a, b) => new Date(a.date) - new Date(b.date)));
     setLoading(false);
-  };
+  }, [startDate, endDate]);
+
+  useEffect(() => {
+    fetchSummary();
+  }, [fetchSummary]);
 
   return (
     <Paper style={{ padding: '20px', marginBottom: '20px' }}>

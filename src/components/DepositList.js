@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { 
+import React, { useState, useEffect, useCallback } from 'react';
+import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
-  Button, TextField, Select, MenuItem, FormControl, InputLabel
+  Button, TextField
 } from '@mui/material';
 import { db } from '../services/firebase';
 import { collection, query, where, orderBy, limit, startAfter, getDocs } from 'firebase/firestore';
@@ -13,15 +13,11 @@ function DepositList() {
   const [loading, setLoading] = useState(true);
   const [lastVisible, setLastVisible] = useState(null);
   const [hasMore, setHasMore] = useState(true);
-  const [sortField, setSortField] = useState('date');
-  const [sortDirection, setSortDirection] = useState('desc');
+  const [sortField] = useState('date');
+  const [sortDirection] = useState('desc');
   const [filterName, setFilterName] = useState('');
 
-  useEffect(() => {
-    fetchDeposits();
-  }, [sortField, sortDirection, filterName]);
-
-  const fetchDeposits = async (loadMore = false) => {
+  const fetchDeposits = useCallback(async (loadMore = false) => {
     setLoading(true);
     let q = query(
       collection(db, 'deposits'),
@@ -50,34 +46,28 @@ function DepositList() {
     setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
     setHasMore(querySnapshot.docs.length === ITEMS_PER_PAGE);
     setLoading(false);
-  };
+  }, [filterName, lastVisible, sortDirection, sortField]);
 
-  const handleSort = (field) => {
-    if (field === sortField) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
-  };
+  useEffect(() => {
+    fetchDeposits();
+  }, [fetchDeposits]);
 
   return (
     <div>
-      <FormControl fullWidth>
-        <TextField
-          label="Filter by Name"
-          value={filterName}
-          onChange={(e) => setFilterName(e.target.value)}
-          margin="normal"
-        />
-      </FormControl>
+      <TextField
+        label="Filter by Name"
+        value={filterName}
+        onChange={(e) => setFilterName(e.target.value)}
+        margin="normal"
+        fullWidth
+      />
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell onClick={() => handleSort('date')}>Date</TableCell>
-              <TableCell onClick={() => handleSort('name')}>Name</TableCell>
-              <TableCell onClick={() => handleSort('amount')}>Amount</TableCell>
+              <TableCell>Date</TableCell>
+              <TableCell>Name</TableCell>
+              <TableCell>Amount</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
